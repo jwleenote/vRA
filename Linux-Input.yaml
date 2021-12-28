@@ -1,0 +1,147 @@
+formatVersion: 1
+inputs:
+  hostname:
+    type: string
+  CPU:
+    type: number
+    minimum: 1
+    maximum: 4
+    title: CPU Core
+    description: 'CPU: 1~4 Core'
+  Memory:
+    type: number
+    minimum: 1
+    maximum: 16
+    title: Memory GB
+    description: 'Memory: 1~16 GB'
+  Image:
+    type: string
+    enum:
+      - centos7.8
+      - centos7.9
+    title: 리눅스 버전
+  networks:
+    type: number
+    minimum: 1
+    maximum: 2
+    default: 1
+    title: NIC 개수
+    description: 'NIC: 1~2개'
+  net1:
+    type: string
+    oneOf:
+      - title: VLAN 10 - 192.168.10.x
+        const: vlan10
+      - title: VLAN 11 - 192.168.11.x
+        const: vlan11
+      - title: VLAN 12 - 192.168.12.x
+        const: vlan12
+    default: vlan11
+    title: NIC01 네트워크
+  net2:
+    type: string
+    oneOf:
+      - title: VLAN 10 - 192.168.10.x
+        const: vlan10
+      - title: VLAN 11 - 192.168.11.x
+        const: vlan11
+      - title: VLAN 12 - 192.168.12.x
+        const: vlan12
+    default: vlan12
+    title: 추가 NIC02 네트워크
+  ip1:
+    type: string
+  gateway1:
+    type: string
+  ip2:
+    type: string
+    default: ''
+  disks:
+    type: number
+    minimum: 1
+    maximum: 3
+    default: 1
+    title: Disk 개수
+    description: 'Disk: 1~3개'
+  disk1:
+    type: number
+    minimum: 100
+    maximum: 100
+    default: 100
+    title: OS Disk 1 (GB) - 용량 변경 불가
+    description: OS DISK 이며 용량 변경은 배포 후 가능
+  disk2:
+    type: number
+    minimum: 1
+    maximum: 100
+    title: 추가 Disk 2 (GB)
+    description: 'Disk Size: 1~100GB'
+  disk3:
+    type: number
+    minimum: 1
+    maximum: 100
+    title: 추가 Disk 3 (GB)
+    description: 'Disk Size: 1~100GB'
+resources:
+  net1:
+    type: Cloud.vSphere.Network
+    metadata:
+      layoutPosition:
+        - 1
+        - 0
+    properties:
+      name: net1
+      networkType: existing
+      constraints:
+        - tag: 'net:${input.net1}'
+  net2:
+    type: Cloud.vSphere.Network
+    metadata:
+      layoutPosition:
+        - 2
+        - 0
+    properties:
+      name: net2
+      count: '${input.networks>=2?1:0}'
+      networkType: existing
+      constraints:
+        - tag: 'net:${input.net2}'
+  VM01:
+    type: Cloud.vSphere.Machine
+    metadata:
+      layoutPosition:
+        - 3
+        - 0
+    properties:
+      name: '${input.hostname}'
+      image: '${input.Image}'
+      cpuCount: '${input.CPU}'
+      totalMemoryMB: '${(input.Memory)*1024}'
+      customizationSpec: CIA-linux
+      storage:
+        constraints:
+          - tag: 'storage:synology'
+      attachedDisks: '${map_to_object(resource.disk2[*].id, "source") + map_to_object(resource.disk3[*].id, "source")}'
+      networks: '${[{"network":resource.net1.id,"assignment":"static","address":input.ip1,"gateway":input.gateway1,"deviceIndex":0}] + [input.networks>=2?{"network":resource.net2[*].id[0],"assignment":"static","address":input.ip2,"gateway":"","deviceIndex":1}:null]}'
+  disk2:
+    type: Cloud.vSphere.Disk
+    metadata:
+      layoutPosition:
+        - 4
+        - 0
+    properties:
+      name: disk2
+      capacityGb: '${input.disk2}'
+      count: '${input.disks>=2?1:0}'
+      storagePolicy: CIA-synology
+  disk3:
+    type: Cloud.vSphere.Disk
+    metadata:
+      layoutPosition:
+        - 5
+        - 0
+    properties:
+      name: disk3
+      capacityGb: '${input.disk3}'
+      count: '${input.disks>=3?1:0}'
+      storagePolicy: CIA-synology
