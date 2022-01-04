@@ -1,5 +1,5 @@
-name: windows-input01
-version: 1
+name: Windows-Input01
+version: v1
 formatVersion: 1
 inputs:
   hostname:
